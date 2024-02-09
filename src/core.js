@@ -70,6 +70,12 @@ export class Function {
   }
 }
 
+export class StackInstruction {
+  constructor(programCounter, instruction, argument) {
+    Object.assign(this, { programCounter, instruction, argument: argument })
+  }
+}
+
 export const standardLibrary = Object.freeze({
   π: new Variable("π", true),
   sqrt: new Function("sqrt", 1),
