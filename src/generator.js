@@ -3,23 +3,59 @@
 // Invoke generate(program) with the program node to get back the JavaScript
 // translation as a string.
 
-import { StackInstruction, standardLibrary } from "./core.js"
+import { StackInstruction } from './core.js'
 
 export default function generate(program) {
-  const output = []
+  let programCounter = 0
 
-  // Variable names in JS will be suffixed with _1, _2, _3, etc. This is
-  // because "for", for example, is a legal variable name in Bella, but
-  // not in JS. So we want to generate something like "for_1". We handle
-  // this by mapping each variable declaration to its suffix.
-  const targetName = (mapping => {
-    return entity => {
-      if (!mapping.has(entity)) {
-        mapping.set(entity, mapping.size + 1)
+  const variableName = (mapping => {
+    return variable => {
+      if (!mapping.has(variable)) {
+        mapping.set(variable, mapping.size)
       }
-      return `${entity.name}_${mapping.get(entity)}`
+      return mapping.get(variable)
     }
   })(new Map())
+
+  const constName = (mapping => {
+    return constant => {
+      if (!mapping.has(constant)) {
+        mapping.set(constant, mapping.size)
+      }
+      return mapping.get(constant)
+    }
+  })(new Map())
+
+  const paramNames = new Map()
+
+  const binaryOps = {
+    '||': 0,
+    '&&': 1,
+    '<=': 2,
+    '<': 3,
+    '==': 4,
+    '!=': 5,
+    '>=': 6,
+    '>': 7,
+    '+': 8,
+    '-': 9,
+    '*': 10,
+    '/': 11,
+    '%': 12,
+    '**': 13,
+  }
+
+  const stdLib = {
+    print: 0,
+    sqrt: 1,
+    sin: 2,
+    cos: 3,
+    exp: 4,
+    ln: 5,
+    hypot: 6,
+  }
+
+  const output = []
 
   const gen = node => generators[node.constructor.name](node)
 
@@ -28,60 +64,122 @@ export default function generate(program) {
       gen(p.statements)
     },
     VariableDeclaration(d) {
-      output.push(`let ${targetName(d.variable)} = ${gen(d.initializer)};`)
+      gen(d.initializer)
+      output.push(
+        new StackInstruction(programCounter++, 'STORE_NAME', variableName(d.variable.name), d.variable.name)
+      )
     },
     Variable(v) {
-      if (v === standardLibrary.π) return "Math.PI"
-      return targetName(v)
+      if (paramNames.has(v.name)) {
+        output.push(
+          new StackInstruction(programCounter++, 'LOAD_FAST', paramNames.get(v.name), v.name)
+        )
+      } else {
+        output.push(
+          new StackInstruction(programCounter++, 'LOAD_NAME', variableName(v.name), v.name)
+        )
+      }
     },
     FunctionDeclaration(d) {
-      const params = d.params.map(targetName).join(", ")
-      output.push(`function ${targetName(d.fun)}(${params}) {`)
-      output.push(`return ${gen(d.body)};`)
-      output.push("}")
+      output.push(new StackInstruction(programCounter++, 'MAKE_FUNCTION'))
+
+      d.params.forEach(param => {
+        paramNames.set(param.name, paramNames.size)
+      })
+
+      gen(d.body)
+      output.push(new StackInstruction(programCounter++, 'STORE_NAME', variableName(d.fun), d.fun))
+
+      paramNames.clear()
     },
     Function(f) {
-      const standard = new Map([
-        [standardLibrary.sqrt, "Math.sqrt"],
-        [standardLibrary.sin, "Math.sin"],
-        [standardLibrary.cos, "Math.cos"],
-        [standardLibrary.exp, "Math.exp"],
-        [standardLibrary.ln, "Math.log"],
-        [standardLibrary.hypot, "Math.hypot"],
-      ]).get(f)
-      return standard ?? targetName(f)
+      if (paramNames.has(f.name)) {
+        output.push(
+          new StackInstruction(programCounter++, 'LOAD_FAST', paramNames.get(f.name), f.name)
+        )
+      } else {
+        output.push(
+          new StackInstruction(
+            programCounter++,
+            'LOAD_NAME',
+            stdLib[f.name] ?? variableName(f.name),
+            f.name
+          )
+        )
+      }
     },
     PrintStatement(s) {
-      const argument = gen(s.argument)
-      output.push(`console.log(${argument});`)
+      gen(s.argument)
+      output.push(
+        new StackInstruction(programCounter++, 'CALL_STDLIB', stdLib['print'], 'print')
+      )
     },
     Assignment(s) {
-      output.push(`${targetName(s.target)} = ${gen(s.source)};`)
+      gen(s.source)
+      output.push(
+        new StackInstruction(programCounter++, 'STORE_NAME', variableName(s.target), s.target)
+      )
     },
     WhileStatement(s) {
-      output.push(`while (${gen(s.test)}) {`)
+      const testIndex = programCounter
+      gen(s.test)
+      const jumpInstructionIndex = programCounter++
       gen(s.body)
-      output.push("}")
+      output.push(new StackInstruction(programCounter++, 'JUMP', testIndex))
+      output.splice(
+        jumpInstructionIndex,
+        0,
+        new StackInstruction(jumpInstructionIndex, 'JUMP_IF_FALSE', programCounter)
+      )
     },
     Call(c) {
-      const args = gen(c.args)
-      const callee = gen(c.callee)
-      return `${callee}(${args.join(",")})`
+      if (paramNames.has(c.name)) {
+        output.push(
+          new StackInstruction(programCounter++, 'LOAD_FAST', paramNames.get(c.name), c.name)
+        )
+      } else {
+        output.push(
+          new StackInstruction(programCounter++, 'LOAD_NAME', variableName(c.callee), c.callee)
+        )
+      }
+
+      c.args.forEach(gen)
+      output.push(new StackInstruction(programCounter++, 'CALL'))
     },
     Conditional(e) {
-      return `((${gen(e.test)}) ? (${gen(e.consequent)}) : (${gen(e.alternate)}))`
+      gen(e.test)
+      const alternateStart = programCounter++
+      gen(e.consequent)
+      const consequentStart = programCounter++
+      gen(e.alternate)
+
+      output.splice(
+        alternateStart,
+        0,
+        new StackInstruction(alternateStart, 'JUMP_IF_FALSE', consequentStart + 1)
+      )
+      output.splice(
+        consequentStart,
+        0,
+        new StackInstruction(consequentStart, 'JUMP', programCounter)
+      )
     },
     BinaryExpression(e) {
-      return `(${gen(e.left)} ${e.op} ${gen(e.right)})`
+      output.push(gen(e.left))
+      output.push(gen(e.right))
+      output.push(new StackInstruction(programCounter++, 'BINARY_OP', binaryOps.get(e.op), e.op))
     },
     UnaryExpression(e) {
-      return `${e.op}(${gen(e.operand)})`
+      output.push(gen(e.operand))
+      output.push(
+        new StackInstruction(programCounter++, `UNARY_${e.op === '!' ? 'NOT' : 'NEGATIVE'}`)
+      )
     },
     Number(e) {
-      return e
+      output.push(new StackInstruction(programCounter++, 'LOAD_CONST', constName(e), e))
     },
     Boolean(e) {
-      return e
+      output.push(new StackInstruction(programCounter++, 'LOAD_CONST', constName(e), e))
     },
     Array(a) {
       return a.map(gen)
@@ -89,5 +187,5 @@ export default function generate(program) {
   }
 
   gen(program)
-  return output.join("\n")
+  return output
 }
