@@ -66,7 +66,12 @@ export default function generate(program) {
     VariableDeclaration(d) {
       gen(d.initializer)
       output.push(
-        new StackInstruction(programCounter++, 'STORE_NAME', variableName(d.variable.name), d.variable.name)
+        new StackInstruction(
+          programCounter++,
+          'STORE_NAME',
+          variableName(d.variable.name),
+          d.variable.name
+        )
       )
     },
     Variable(v) {
@@ -88,7 +93,9 @@ export default function generate(program) {
       })
 
       gen(d.body)
-      output.push(new StackInstruction(programCounter++, 'STORE_NAME', variableName(d.fun.name), d.fun.name))
+      output.push(
+        new StackInstruction(programCounter++, 'STORE_NAME', variableName(d.fun.name), d.fun.name)
+      )
 
       paramNames.clear()
     },
@@ -110,14 +117,17 @@ export default function generate(program) {
     },
     PrintStatement(s) {
       gen(s.argument)
-      output.push(
-        new StackInstruction(programCounter++, 'CALL_STDLIB', stdLib['print'], 'print')
-      )
+      output.push(new StackInstruction(programCounter++, 'CALL_STDLIB', stdLib['print'], 'print'))
     },
     Assignment(s) {
       gen(s.source)
       output.push(
-        new StackInstruction(programCounter++, 'STORE_NAME', variableName(s.target.name), s.target.name)
+        new StackInstruction(
+          programCounter++,
+          'STORE_NAME',
+          variableName(s.target.name),
+          s.target.name
+        )
       )
     },
     WhileStatement(s) {
@@ -126,15 +136,16 @@ export default function generate(program) {
       const jumpInstructionIndex = programCounter++
       gen(s.body)
       output.push(new StackInstruction(programCounter++, 'JUMP', testIndex))
-      output.splice(
-        jumpInstructionIndex,
-        0,
-        new StackInstruction(jumpInstructionIndex, 'JUMP_IF_FALSE', programCounter)
-      )
+      output.push(new StackInstruction(jumpInstructionIndex, 'JUMP_IF_FALSE', programCounter))
     },
     Call(c) {
       output.push(
-        new StackInstruction(programCounter++, 'LOAD_NAME', variableName(c.callee.name), c.callee.name)
+        new StackInstruction(
+          programCounter++,
+          'LOAD_NAME',
+          variableName(c.callee.name),
+          c.callee.name
+        )
       )
 
       c.args.forEach(gen)
@@ -147,16 +158,8 @@ export default function generate(program) {
       const consequentStart = programCounter++
       gen(e.alternate)
 
-      output.splice(
-        alternateStart,
-        0,
-        new StackInstruction(alternateStart, 'JUMP_IF_FALSE', consequentStart + 1)
-      )
-      output.splice(
-        consequentStart,
-        0,
-        new StackInstruction(consequentStart, 'JUMP', programCounter)
-      )
+      output.push(new StackInstruction(alternateStart, 'JUMP_IF_FALSE', consequentStart + 1))
+      output.push(new StackInstruction(consequentStart, 'JUMP', programCounter))
     },
     BinaryExpression(e) {
       gen(e.left)
@@ -181,5 +184,5 @@ export default function generate(program) {
   }
 
   gen(program)
-  return output
+  return output.sort((a, b) => a.programCounter - b.programCounter)
 }
