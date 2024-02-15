@@ -133,15 +133,9 @@ export default function generate(program) {
       )
     },
     Call(c) {
-      if (paramNames.has(c.callee.name)) {
-        output.push(
-          new StackInstruction(programCounter++, 'LOAD_FAST', paramNames.get(c.callee.name), c.callee.name)
-        )
-      } else {
-        output.push(
-          new StackInstruction(programCounter++, 'LOAD_NAME', variableName(c.callee.name), c.callee.name)
-        )
-      }
+      output.push(
+        new StackInstruction(programCounter++, 'LOAD_NAME', variableName(c.callee.name), c.callee.name)
+      )
 
       c.args.forEach(gen)
       output.push(new StackInstruction(programCounter++, 'CALL'))
