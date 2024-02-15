@@ -88,7 +88,7 @@ export default function generate(program) {
       })
 
       gen(d.body)
-      output.push(new StackInstruction(programCounter++, 'STORE_NAME', variableName(d.fun), d.fun))
+      output.push(new StackInstruction(programCounter++, 'STORE_NAME', variableName(d.fun.name), d.fun.name))
 
       paramNames.clear()
     },
@@ -133,13 +133,13 @@ export default function generate(program) {
       )
     },
     Call(c) {
-      if (paramNames.has(c.name)) {
+      if (paramNames.has(c.callee.name)) {
         output.push(
-          new StackInstruction(programCounter++, 'LOAD_FAST', paramNames.get(c.name), c.name)
+          new StackInstruction(programCounter++, 'LOAD_FAST', paramNames.get(c.callee.name), c.callee.name)
         )
       } else {
         output.push(
-          new StackInstruction(programCounter++, 'LOAD_NAME', variableName(c.callee), c.callee)
+          new StackInstruction(programCounter++, 'LOAD_NAME', variableName(c.callee.name), c.callee.name)
         )
       }
 
