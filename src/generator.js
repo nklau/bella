@@ -117,7 +117,7 @@ export default function generate(program) {
     Assignment(s) {
       gen(s.source)
       output.push(
-        new StackInstruction(programCounter++, 'STORE_NAME', variableName(s.target), s.target)
+        new StackInstruction(programCounter++, 'STORE_NAME', variableName(s.target.name), s.target.name)
       )
     },
     WhileStatement(s) {
