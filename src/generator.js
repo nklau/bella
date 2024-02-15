@@ -1,7 +1,7 @@
 // CODE GENERATOR
 //
-// Invoke generate(program) with the program node to get back the JavaScript
-// translation as a string.
+// Invoke generate(program) with the program node to get back the stack
+// machine instruction translation as an array of StackInstructions.
 
 import { StackInstruction } from './core.js'
 
