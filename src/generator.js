@@ -165,12 +165,12 @@ export default function generate(program) {
       )
     },
     BinaryExpression(e) {
-      output.push(gen(e.left))
-      output.push(gen(e.right))
+      gen(e.left)
+      gen(e.right)
       output.push(new StackInstruction(programCounter++, 'BINARY_OP', binaryOps[e.op], e.op))
     },
     UnaryExpression(e) {
-      output.push(gen(e.operand))
+      gen(e.operand)
       output.push(
         new StackInstruction(programCounter++, `UNARY_${e.op === '!' ? 'NOT' : 'NEGATIVE'}`)
       )
