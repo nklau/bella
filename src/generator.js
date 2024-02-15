@@ -167,7 +167,7 @@ export default function generate(program) {
     BinaryExpression(e) {
       output.push(gen(e.left))
       output.push(gen(e.right))
-      output.push(new StackInstruction(programCounter++, 'BINARY_OP', binaryOps.get(e.op), e.op))
+      output.push(new StackInstruction(programCounter++, 'BINARY_OP', binaryOps[e.op], e.op))
     },
     UnaryExpression(e) {
       output.push(gen(e.operand))
