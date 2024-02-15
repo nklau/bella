@@ -4,7 +4,7 @@ import optimize from "./optimizer.js"
 import generate from "./generator.js"
 
 export default function compile(source, outputType) {
-  if (!["parsed", "analyzed", "optimized", "js"].includes(outputType)) {
+  if (!["parsed", "analyzed", "optimized", "stack"].includes(outputType)) {
     throw new Error("Unknown output type")
   }
   const match = parse(source)

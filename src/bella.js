@@ -15,14 +15,19 @@ Prints to stdout according to <outputType>, which must be one of:
   parsed     a message that the program was matched ok by the grammar
   analyzed   the statically analyzed representation
   optimized  the optimized semantically analyzed representation
-  js         the translation to JavaScript
+  stack      the translation to stack machine instructions
 `
 
 async function compileFromFile(filename, outputType) {
   try {
     const buffer = await fs.readFile(filename)
     const compiled = compile(buffer.toString(), outputType)
-    console.log(compiled instanceof Program ? stringify(compiled) : compiled)
+
+    if (outputType === "stack") {
+      console.table(compiled, ["instruction", "argument", "readableName"])
+    } else {
+      console.log(compiled instanceof Program ? stringify(compiled) : compiled)
+    }
   } catch (e) {
     console.error(`\u001b[31m${e}\u001b[39m`)
     process.exitCode = 1
