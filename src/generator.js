@@ -3,7 +3,7 @@
 // Invoke generate(program) with the program node to get back the JavaScript
 // translation as a string.
 
-import { standardLibrary } from "./core.js"
+import { StackInstruction, standardLibrary } from "./core.js"
 
 export default function generate(program) {
   const output = []

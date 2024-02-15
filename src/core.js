@@ -71,8 +71,8 @@ export class Function {
 }
 
 export class StackInstruction {
-  constructor(programCounter, instruction, argument) {
-    Object.assign(this, { programCounter, instruction, argument: argument })
+  constructor(programCounter, instruction, argument, readableName) {
+    Object.assign(this, { programCounter, instruction, argument, readableName })
   }
 }
 
